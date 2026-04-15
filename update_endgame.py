@@ -23,7 +23,7 @@ headers={
     "User-Agent": "endgame-trackball-updater"
 }
 
-def confirm_action(prompt="Do you want to proceed? (y/n): "):
+def confirm_action(prompt="Do you want to proceed? (y/n): ") -> None:
     while True:
         choice = input(prompt).lower().strip()
         if choice in ['y', 'yes']:
@@ -33,7 +33,7 @@ def confirm_action(prompt="Do you want to proceed? (y/n): "):
         print("Please enter 'y' or 'n'.")
 
 
-def print_date(asset_date):
+def print_date(asset_date) -> str:
     release_date = datetime.strptime(asset_date, "%Y-%m-%dT%H:%M:%SZ")
     release_date = release_date.strftime("%Y-%m-%d")
     return release_date
@@ -135,7 +135,7 @@ def wait_for_uf2_drive() -> Path:
 
     raise RuntimeError("Timed out waiting for the UF2 drive")
 
-def calculate_hash(file_path):
+def calculate_hash(file_path) -> str:
     sha256_hash = hashlib.sha256()
     with open(file_path, "rb") as file:
         while True:
@@ -145,7 +145,7 @@ def calculate_hash(file_path):
             sha256_hash.update(data)
     return sha256_hash.hexdigest()
 
-def verify_hash(downloaded_file, expected_hash):
+def verify_hash(downloaded_file, expected_hash) -> bool:
     calculated_hash = calculate_hash(downloaded_file)
     return calculated_hash == expected_hash
 
