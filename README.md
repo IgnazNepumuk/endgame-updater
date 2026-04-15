@@ -24,6 +24,10 @@ python3 update_endgame.py --paw3395
 
 If you want to download a specific firmware version, pass `--version <version>` as commandline argument:
 
+```bash
+python3 update_endgame.py --version 0.5.9
+```
+
 ## How it works
 
 1. Checks the latest release from `efogtech/endgame-trackball-config`
@@ -42,5 +46,5 @@ If you want to download a specific firmware version, pass `--version <version>` 
 
 - The default command installs the normal firmware in its latest version
 - The `--version <version>` argument installs a specific release
-- The `--paw3395` argument installs the PAW3395 firmware
+- The `--paw3395` argument installs the PAW3395 firmware (upgraded sensors)
 - The script looks for common UF2 mount points on Windows, Linux, and macOS
