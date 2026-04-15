@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 import argparse
+import hashlib
 from pathlib import Path
 from urllib.request import Request, urlopen
 from datetime import datetime
@@ -134,6 +135,20 @@ def wait_for_uf2_drive() -> Path:
 
     raise RuntimeError("Timed out waiting for the UF2 drive")
 
+def calculate_hash(file_path):
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as file:
+        while True:
+            data = file.read(65536)  # Read the file in 64KB chunks.
+            if not data:
+                break
+            sha256_hash.update(data)
+    return sha256_hash.hexdigest()
+
+def verify_hash(downloaded_file, expected_hash):
+    calculated_hash = calculate_hash(downloaded_file)
+    return calculated_hash == expected_hash
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -155,6 +170,8 @@ def main() -> int:
     asset_date = asset["updated_at"]
     latest = latest_release.get("tag_name", "unknown")
     latest_date = latest_release.get("created_at")
+    asset_digest = asset["digest"].removeprefix("sha256:")
+    tag = release.get("tag_name", "unknown")
 
     print(f"\nLatest release ({print_date(latest_date)}): {latest}")
     print(f"Selected firmware ({print_date(asset_date)}): {asset_name}\n")
@@ -169,6 +186,13 @@ def main() -> int:
         firmware_path = Path(temp_dir) / asset_name
         print("Downloading firmware...")
         download_file(asset_url, firmware_path)
+        print("Verifying downloaded firmware...")
+        if verify_hash(firmware_path, asset_digest):
+            print("Downloaded firmware verified successfully.")
+        else:
+            print("Downloaded file could not be verified, update failed!")
+            return 1
+
         drive = wait_for_uf2_drive()
         target_path = drive / asset_name
         print(f"Copying firmware to {drive}...")
