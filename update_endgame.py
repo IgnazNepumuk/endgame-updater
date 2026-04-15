@@ -5,28 +5,48 @@ import string
 import sys
 import tempfile
 import time
+import argparse
 from pathlib import Path
 from urllib.request import Request, urlopen
+from datetime import datetime
 
-
-REPO = "efogtech/endgame-trackball-config"
-API_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
+OWNER = "efogtech"
+REPO = "endgame-trackball-config"
+API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases/latest"
 POLL_SECONDS = 1
 TIMEOUT_SECONDS = 120
 HTTP_TIMEOUT_SECONDS = 30
 
+headers={
+    "Accept": "application/vnd.github+json",
+    "User-Agent": "endgame-trackball-updater"
+}
 
-def get_release() -> dict:
+def confirm_action(prompt="Do you want to proceed? (y/n): "):
+    while True:
+        choice = input(prompt).lower().strip()
+        if choice in ['y', 'yes']:
+            return True
+        if choice in ['n', 'no']:
+            return False
+        print("Please enter 'y' or 'n'.")
+
+
+def print_date(asset_date):
+    release_date = datetime.strptime(asset_date, "%Y-%m-%dT%H:%M:%SZ")
+    release_date = release_date.strftime("%Y-%m-%d")
+    return release_date
+
+def get_release(headers: dict = None) -> dict:
+    if headers is None:
+        headers = {}
     request = Request(
         API_URL,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "endgame-trackball-updater",
-        },
+        data=None,
+        headers=headers
     )
     with urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
         return json.load(response)
-
 
 def pick_asset(release: dict, is_3395: bool) -> dict:
     wanted = "endgame-paw3395-" if is_3395 else "endgame-"
@@ -43,6 +63,19 @@ def pick_asset(release: dict, is_3395: bool) -> dict:
 
     variant = "3395" if is_3395 else "normal"
     raise RuntimeError(f"Could not find {variant} firmware in latest release")
+
+def get_specific_release(version_tag, headers: dict = None) -> dict:
+    version_tag = "endgame-" +  version_tag
+    API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/releases/tags/{version_tag}"
+    if headers is None:
+        headers = {}
+    request = Request(
+        API_URL,
+        data=None,
+        headers=headers
+    )
+    with urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
+        return json.load(response)
 
 
 def download_file(url: str, destination: Path) -> None:
@@ -103,28 +136,39 @@ def wait_for_uf2_drive() -> Path:
 
 
 def main() -> int:
-    arg = sys.argv[1] if len(sys.argv) > 1 else ""
-    if arg not in {"", "3395"}:
-        print(f"Usage: {Path(sys.argv[0]).name} [3395]", file=sys.stderr)
-        return 1
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--paw3395', action='store_true', help='use firmware variant for the PAW3395 sensors')
+    parser.add_argument('--version', '-v', type=str, help='specific version to download')
+    args = parser.parse_args()
 
-    is_3395 = arg == "3395"
+    is_3395 = args.paw3395
+
+    release = latest_release = get_release(headers)
+
+    if args.version:
+        release = get_specific_release(args.version, headers)
 
     print("Checking latest firmware release...")
-    release = get_release()
     asset = pick_asset(release, is_3395)
     asset_name = asset["name"]
     asset_url = asset["browser_download_url"]
-    tag = release.get("tag_name", "unknown")
+    asset_date = asset["updated_at"]
+    latest = latest_release.get("tag_name", "unknown")
+    latest_date = latest_release.get("created_at")
 
-    print(f"Latest release: {tag}")
-    print(f"Selected firmware: {asset_name}")
+    print(f"\nLatest release ({print_date(latest_date)}): {latest}")
+    print(f"Selected firmware ({print_date(asset_date)}): {asset_name}\n")
+
+    if confirm_action("Do you want to download the selected firmware and copy it to your device? (y/n): "):
+        pass
+    else:
+        print("Action cancelled.")
+        sys.exit()
 
     with tempfile.TemporaryDirectory(prefix="endgame-fw-") as temp_dir:
         firmware_path = Path(temp_dir) / asset_name
         print("Downloading firmware...")
         download_file(asset_url, firmware_path)
-
         drive = wait_for_uf2_drive()
         target_path = drive / asset_name
         print(f"Copying firmware to {drive}...")

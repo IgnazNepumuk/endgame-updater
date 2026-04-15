@@ -16,11 +16,13 @@ Run the script with Python:
 python3 update_endgame.py
 ```
 
-If you need the PAW3395 firmware variant, pass `3395` as an argument:
+If you need the PAW3395 firmware variant, pass `--paw3395` as an commandline argument:
 
 ```bash
-python3 update_endgame.py 3395
+python3 update_endgame.py --paw3395
 ```
+
+If you want to download a specific firmware version, pass `--version <version>` as commandline argument:
 
 ## How it works
 
@@ -38,6 +40,7 @@ python3 update_endgame.py 3395
 
 ## Notes
 
-- The default command installs the normal firmware
-- The `3395` argument installs the PAW3395 firmware
+- The default command installs the normal firmware in its latest version
+- The `--version <version>` argument installs a specific release
+- The `--paw3395` argument installs the PAW3395 firmware
 - The script looks for common UF2 mount points on Windows, Linux, and macOS
